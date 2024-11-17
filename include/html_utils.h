@@ -2,43 +2,43 @@
 #define HTML_UTILS_H
 
 struct html_entity {
-	const char* entity;
+	const char *entity;
 	unsigned long codepoint;
 };
 typedef struct html_entity html_entity_t;
 
 static const html_entity_t entities[] = {
-	{"&quot;", 0x0022},
-	{"&apos;", 0x0027},
-	{"&amp;", 0x0026},
-	{"&lt;", 0x003C},
-	{"&gt;", 0x003E},
-	{"&nbsp;", 0x00A0},
-	{"&copy;", 0x00A9},
-	{"&reg;", 0x00AE},
-	{"&euro;", 0x20AC},
-	{"&pound;", 0x00A3},
-	{"&cent;", 0x00A2},
-	{"&deg;", 0x00B0},
+	{  "&quot;", 0x0022},
+  {  "&apos;", 0x0027},
+  {   "&amp;", 0x0026},
+  {    "&lt;", 0x003C},
+	{		"&gt;", 0x003E},
+  {  "&nbsp;", 0x00A0},
+  {  "&copy;", 0x00A9},
+  {   "&reg;", 0x00AE},
+	{  "&euro;", 0x20AC},
+  { "&pound;", 0x00A3},
+  {  "&cent;", 0x00A2},
+  {   "&deg;", 0x00B0},
 	{"&middot;", 0x00B7},
-	{"&bull;", 0x2022},
-	{"&mdash;", 0x2014},
-	{"&ndash;", 0x2013},
+  {  "&bull;", 0x2022},
+  { "&mdash;", 0x2014},
+  { "&ndash;", 0x2013},
 	{"&hellip;", 0x2026},
-	{"&ldquo;", 0x201C},
-	{"&rdquo;", 0x201D},
-	{NULL, 0}  // Sentinel value
+  { "&ldquo;", 0x201C},
+  { "&rdquo;", 0x201D},
+  {      NULL,      0}  // Sentinel value
 };
 
-static inline unsigned long hex_to_int(const char* hex, size_t len);
-static inline unsigned long dec_to_int(const char* dec);
-static inline size_t unicode_to_utf8(unsigned long codepoint, char* buffer);
-static inline int is_unicode_escape(const char* str);
-char* html_decode(const char* input);
+static inline unsigned long hex_to_int(const char *hex, size_t len);
+static inline unsigned long dec_to_int(const char *dec);
+static inline size_t unicode_to_utf8(unsigned long codepoint, char *buffer);
+static inline int is_unicode_escape(const char *str);
+char *html_decode(const char *input);
 
 #ifdef HTML_UTILS_IMPEMENTATION
 
-static inline unsigned long hex_to_int(const char* hex, size_t len) {
+static inline unsigned long hex_to_int(const char *hex, size_t len) {
 	unsigned long result = 0;
 	for (size_t i = 0; i < len && hex[i]; i++) {
 		result *= 16;
@@ -54,7 +54,7 @@ static inline unsigned long hex_to_int(const char* hex, size_t len) {
 	return result;
 }
 
-static inline unsigned long dec_to_int(const char* dec) {
+static inline unsigned long dec_to_int(const char *dec) {
 	unsigned long result = 0;
 	while (*dec && isdigit(*dec)) {
 		result = result * 10 + (*dec - '0');
@@ -63,23 +63,20 @@ static inline unsigned long dec_to_int(const char* dec) {
 	return result;
 }
 
-static inline size_t unicode_to_utf8(unsigned long codepoint, char* buffer) {
+static inline size_t unicode_to_utf8(unsigned long codepoint, char *buffer) {
 	if (codepoint <= 0x7F) {
 		buffer[0] = (char)codepoint;
 		return 1;
-	}
-	else if (codepoint <= 0x7FF) {
+	} else if (codepoint <= 0x7FF) {
 		buffer[0] = 0xC0 | ((codepoint >> 6) & 0x1F);
 		buffer[1] = 0x80 | (codepoint & 0x3F);
 		return 2;
-	}
-	else if (codepoint <= 0xFFFF) {
+	} else if (codepoint <= 0xFFFF) {
 		buffer[0] = 0xE0 | ((codepoint >> 12) & 0x0F);
 		buffer[1] = 0x80 | ((codepoint >> 6) & 0x3F);
 		buffer[2] = 0x80 | (codepoint & 0x3F);
 		return 3;
-	}
-	else if (codepoint <= 0x10FFFF) {
+	} else if (codepoint <= 0x10FFFF) {
 		buffer[0] = 0xF0 | ((codepoint >> 18) & 0x07);
 		buffer[1] = 0x80 | ((codepoint >> 12) & 0x3F);
 		buffer[2] = 0x80 | ((codepoint >> 6) & 0x3F);
@@ -89,26 +86,26 @@ static inline size_t unicode_to_utf8(unsigned long codepoint, char* buffer) {
 	return 0; // Invalid codepoint
 }
 
-static inline int is_unicode_escape(const char* str) {
+static inline int is_unicode_escape(const char *str) {
 	return (str[0] == '\\' && (str[1] == 'u' || str[1] == 'U'));
 }
 
-char* html_decode(const char* input) {
+char *html_decode(const char *input) {
 	if (!input) {
 		return NULL;
 	}
-	
+
 	// Allocate memory for output (worst case: input length * 4 for UTF-8)
-	char* output = malloc(strlen(input) * 4 + 1);
-	char* write_ptr = output;
-	const char* read_ptr = input;
-	
+	char *output         = malloc(strlen(input) * 4 + 1);
+	char *write_ptr      = output;
+	const char *read_ptr = input;
+
 	while (*read_ptr) {
 		// Handle Unicode escape sequences (\uXXXX or \UXXXXXXXX)
 		if (is_unicode_escape(read_ptr)) {
-			char is_long = (read_ptr[1] == 'U');
+			char is_long   = (read_ptr[1] == 'U');
 			size_t hex_len = is_long ? 8 : 4;
-			
+
 			if (strlen(read_ptr + 2) >= hex_len) {
 				unsigned long codepoint = hex_to_int(read_ptr + 2, hex_len);
 				if (codepoint > 0) {
@@ -123,12 +120,12 @@ char* html_decode(const char* input) {
 			// Check for numeric entities
 			if (*(read_ptr + 1) == '#') {
 				unsigned long codepoint = 0;
-				const char* end = NULL;
-				
+				const char *end         = NULL;
+
 				if (*(read_ptr + 2) == 'x' || *(read_ptr + 2) == 'X') {
 					// Hexadecimal entity
 					char hex[10] = {0};
-					end = strchr(read_ptr + 3, ';');
+					end          = strchr(read_ptr + 3, ';');
 					if (end && end - (read_ptr + 3) < 9) {
 						strncpy(hex, read_ptr + 3, end - (read_ptr + 3));
 						codepoint = hex_to_int(hex, 8);
@@ -136,20 +133,20 @@ char* html_decode(const char* input) {
 				} else if (isdigit(*(read_ptr + 2))) {
 					// Decimal entity
 					char dec[10] = {0};
-					end = strchr(read_ptr + 2, ';');
+					end          = strchr(read_ptr + 2, ';');
 					if (end && end - (read_ptr + 2) < 9) {
 						strncpy(dec, read_ptr + 2, end - (read_ptr + 2));
 						codepoint = dec_to_int(dec);
 					}
 				}
-				
+
 				if (end && codepoint > 0) {
 					write_ptr += unicode_to_utf8(codepoint, write_ptr);
 					read_ptr = end + 1;
 					continue;
 				}
 			}
-			
+
 			// Check named entities
 			int found = 0;
 			for (int i = 0; entities[i].entity != NULL; i++) {
@@ -165,14 +162,13 @@ char* html_decode(const char* input) {
 				continue;
 			}
 		}
-		
+
 		*write_ptr++ = *read_ptr++;
 	}
-	
+
 	*write_ptr = '\0';
 	return output;
 }
-
 
 #endif // HTML_UTILS_IMPEMENTATION
 

@@ -51,7 +51,7 @@ signed main(void) {
 
 	novel_info_t novels[64];
 	novel_info_t chapters[64];
-	size_t novel_size = 0;
+	size_t novel_size   = 0;
 	size_t chapter_size = 0;
 
 	res = curl_global_init(CURL_GLOBAL_DEFAULT);
@@ -150,7 +150,7 @@ signed main(void) {
 
 		char *chapter_name = html_decode(strndup(cur_pos + ovector[8], ovector[9] - ovector[8]));
 
-		chapters[chapter_size].url = url;
+		chapters[chapter_size].url    = url;
 		chapters[chapter_size++].name = chapter_name;
 	}
 
@@ -159,7 +159,7 @@ signed main(void) {
 	// 	printf("Name: %s\n", chapters[i].name);
 	// 	printf("URL: %s\n", chapters[i].url);
 	// }
-	
+
 	if (curl_get(curl, chapters[0].url, &chunk) != CURL_GET_OK) {
 		fprintf(stderr, "Request failed\n");
 		status = 1;
@@ -183,7 +183,10 @@ signed main(void) {
 			content[content_size++] = '\n';
 			break;
 		case 'p':
-			strncpy(content + content_size, strndup(cur_pos + ovector[2], ovector[3] - ovector[2]), ovector[3] - ovector[2]);
+			strncpy(
+				content + content_size, strndup(cur_pos + ovector[2], ovector[3] - ovector[2]),
+				ovector[3] - ovector[2]
+			);
 			content_size += ovector[3] - ovector[2];
 			break;
 		}
