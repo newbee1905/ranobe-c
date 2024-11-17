@@ -1,0 +1,16 @@
+---
+BasedOnStyle: LLVM
+IndentWidth: 2
+TabWidth: 2
+UseTab: AlignWithSpaces
+ColumnLimit: 100
+AlignArrayOfStructures: Right
+AlignConsecutiveAssignments: Consecutive
+AlignConsecutiveMacros: AcrossEmptyLines
+# BreakTemplateDeclarations: Yes
+AlwaysBreakTemplateDeclarations: true
+AllowShortFunctionsOnASingleLine: false
+AlignAfterOpenBracket: BlockIndent
+ContinuationIndentWidth: 2
+---
+Language: Cpp
