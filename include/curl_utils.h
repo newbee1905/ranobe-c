@@ -2,6 +2,33 @@
 #define CURL_UTILS_H
 
 #define CURL_GET_OK 0
+#define DEFAULT_USERAGENT                                                                          \
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "              \
+	"Chrome/114.0.0.0 Safari/537.36"
+#define DEFAULT_REFERER "https://google.com"
+
+const char *user_agents[] = {
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+  "Chrome/114.0.0.0 Safari/537.36",
+	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
+  "Chrome/91.0.4472.124 Safari/537.36",
+	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 "
+  "Safari/537.36"};
+
+const char *referers[] = {"https://google.com", "https://bing.com", "https://duckduckgo.com"};
+
+#define SET_RANDOM_USER_AGENT(curl)                                                                \
+	do {                                                                                             \
+		const char *random_user_agent =                                                                \
+			user_agents[rand() % (sizeof(user_agents) / sizeof(user_agents[0]))];                        \
+		curl_easy_setopt(curl, CURLOPT_USERAGENT, random_user_agent);                                  \
+	} while (0)
+
+#define SET_RANDOM_REFERER(curl)                                                                   \
+	do {                                                                                             \
+		const char *random_referer = referers[rand() % (sizeof(referers) / sizeof(referers[0]))];      \
+		curl_easy_setopt(curl, CURLOPT_AUTOREFERER, random_referer);                                   \
+	} while (0)
 
 struct memory {
 	char *res;
@@ -70,9 +97,21 @@ int curl_get(CURL *curl, const char *url, memory_t *out) {
 	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
 	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
 
+	SET_RANDOM_USER_AGENT(curl);
+	SET_RANDOM_REFERER(curl);
+
 	CURLcode res = curl_easy_perform(curl);
 	if (res != CURLE_OK) {
 		fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+		memory_free(out);
+		exit(1);
+	}
+
+	long res_code;
+	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &res_code);
+
+	if ((res_code / 100) != 2) {
+		fprintf(stderr, "GET %s: Unexpected res code: %ld\n", url, res_code);
 		memory_free(out);
 		exit(1);
 	}
