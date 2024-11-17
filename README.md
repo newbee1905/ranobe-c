@@ -5,6 +5,7 @@
 - gcc or clang
 - Any POSIX Shell
 - curl
+- pcre
 
 ## Dev Dependencies
 
