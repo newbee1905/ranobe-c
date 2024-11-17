@@ -1,4 +1,4 @@
 #!/bin/sh
 
-find src -iname '*.cc' | xargs clang-format -i
-find include -iname '*.hh' | xargs clang-format -i
+find src -iname '*.c' | xargs clang-format -i
+find include -iname '*.h' | xargs clang-format -i
