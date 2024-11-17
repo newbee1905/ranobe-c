@@ -15,8 +15,10 @@
 
 ## TODO
 
-- [ ] Parse Lightnovel
+- [x] Parse Lightnovel
 - [ ] Read Lightnovel from terminal
 - [ ] Small GUI with imgui for reading lightnovel
 - [ ] Track progress
-- [ ] Better build.sh to also build submodule
+- [ ] Properly malloc string
+- [ ] Adding arena for better memory management
+- [ ] implement small vector for adding content to render
