@@ -9,11 +9,11 @@
 
 const char *user_agents[] = {
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
-  "Chrome/114.0.0.0 Safari/537.36",
+	"Chrome/114.0.0.0 Safari/537.36",
 	"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) "
-  "Chrome/91.0.4472.124 Safari/537.36",
+	"Chrome/91.0.4472.124 Safari/537.36",
 	"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 "
-  "Safari/537.36"};
+	"Safari/537.36"};
 
 const char *referers[] = {"https://google.com", "https://bing.com", "https://duckduckgo.com"};
 
@@ -42,6 +42,7 @@ static inline void memory_move(memory_t *dst, memory_t *src);
 
 static inline size_t __write_cb(char *data, size_t size, size_t nmemb, void *clientp);
 int curl_get(CURL *curl, const char *url, memory_t *out);
+int curl_post(CURL *curl, const char *url, const char *post_data, memory_t *out);
 
 #ifdef CURL_UTILS_IMPEMENTATION
 
@@ -104,7 +105,7 @@ int curl_get(CURL *curl, const char *url, memory_t *out) {
 	if (res != CURLE_OK) {
 		fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
 		memory_free(out);
-		exit(1);
+		return -1;
 	}
 
 	long res_code;
@@ -113,7 +114,45 @@ int curl_get(CURL *curl, const char *url, memory_t *out) {
 	if ((res_code / 100) != 2) {
 		fprintf(stderr, "GET %s: Unexpected res code: %ld\n", url, res_code);
 		memory_free(out);
-		exit(1);
+		return -1;
+	}
+
+	return 0;
+}
+
+int curl_post(CURL *curl, const char *url, const char *post_data, memory_t *out) {
+	if (!curl || !url || !post_data || !out) {
+		return -1;
+	}
+
+	memory_init(out);
+
+	curl_easy_setopt(curl, CURLOPT_URL, url);
+	curl_easy_setopt(curl, CURLOPT_POST, 1L);              // Enable POST
+	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data); // Set POST data
+	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, __write_cb);
+	curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)out);
+	curl_easy_setopt(curl, CURLOPT_BUFFERSIZE, 102400L);
+	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
+	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 10L);
+
+	SET_RANDOM_USER_AGENT(curl);
+	SET_RANDOM_REFERER(curl);
+
+	CURLcode res = curl_easy_perform(curl);
+	if (res != CURLE_OK) {
+		fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+		memory_free(out);
+		return -1;
+	}
+
+	long res_code;
+	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &res_code);
+
+	if ((res_code / 100) != 2) {
+		fprintf(stderr, "POST %s: Unexpected res code: %ld\n", url, res_code);
+		memory_free(out);
+		return -1;
 	}
 
 	return 0;

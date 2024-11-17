@@ -1,6 +1,6 @@
 #!/bin/dash
 
-CC=clang
+CC=gcc
 
 INCLUDES="include"
 LIBS=""
