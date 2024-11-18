@@ -1,0 +1,3 @@
+#!/bin/sh
+echo "pre-commit hook run"
+./format.sh
