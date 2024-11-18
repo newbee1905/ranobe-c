@@ -14,6 +14,7 @@
 #define HTML_UTILS_IMPEMENTATION
 #include "html_utils.h"
 
+#define REGEX_IMPLEMENTATION
 #include "regex.h"
 
 struct novel_info {
@@ -46,9 +47,6 @@ signed main(void) {
 	long res_code;
 	size_t res_length;
 
-	int rc;
-	int ovector[30];
-
 	novel_info_t novels[64];
 	novel_info_t chapters[64];
 	size_t novel_size   = 0;
@@ -71,24 +69,21 @@ signed main(void) {
 		goto clean_up;
 	}
 
-	res_length = strlen(chunk.res);
+	regex_match_t match;
+	regex_match_init(&match);
 
-	for (const char *cur_pos = chunk.res;
-	     (rc = pcre_exec(novel_list_.re, novel_list_.re_extra, cur_pos, res_length, 0, 0, ovector, 30)) >= 0;
-	     cur_pos += ovector[1], res_length -= ovector[1]) {
-		if (novel_size >= 64) {
-			fprintf(stderr, "Exceeded novel array capacity\n");
-			break;
-		}
+	for (regex_input_t input = {.s = chunk.res, .len = strlen(chunk.res), .pos = 0};
+	     regex_match_next(&novel_list_, &input, &match) == REGEX_MATCH_OK; regex_match_cleanup(&match)) {
 
-		novels[novel_size].url    = strndup(cur_pos + ovector[2], ovector[3] - ovector[2]);
-		novels[novel_size++].name = strndup(cur_pos + ovector[4], ovector[5] - ovector[4]);
+		novels[novel_size].url    = strndup(match.captures[1], match.capture_lens[1]);
+		novels[novel_size++].name = strndup(match.captures[2], match.capture_lens[2]);
 	}
+	memory_free(&chunk);
 
 	// printf("Captured %zu novels\n", novel_size);
 	// for (size_t i = 0; i < novel_size; ++i) {
-	//  printf("Name: %s\n", novels[i].name);
-	//  printf("URL: %s\n", novels[i].url);
+	// 	printf("Name: %s\n", novels[i].name);
+	// 	printf("URL: %s\n", novels[i].url);
 	// }
 
 	if (curl_get(curl, novels[0].url, &chunk) != CURL_GET_OK) {
@@ -100,23 +95,30 @@ signed main(void) {
 	printf("%s\n", novels[0].url);
 
 	char *id;
-	res_length = strlen(chunk.res);
-	if ((rc = pcre_exec(novel_id_.re, novel_id_.re_extra, chunk.res, res_length, 0, 0, ovector, 30)) >= 0) {
-		id = strndup(chunk.res + ovector[2], ovector[3] - ovector[2]);
+
+	for (regex_input_t input = {.s = chunk.res, .len = strlen(chunk.res), .pos = 0};
+	     regex_match_next(&novel_id_, &input, &match) == REGEX_MATCH_OK; regex_match_cleanup(&match)) {
+		id = strndup(match.captures[1], match.capture_lens[1]);
 	}
+
 	printf("%s\n", id);
 
-	res_length = strlen(chunk.res);
-
-	char *last_page_str;
-	for (const char *cur_pos = chunk.res;
-	     (rc = pcre_exec(pagination_list_.re, pagination_list_.re_extra, cur_pos, res_length, 0, 0, ovector, 30)) >= 0;
-	     cur_pos += ovector[1], res_length -= ovector[1]) {
-
-		last_page_str = strndup(cur_pos + ovector[2], ovector[3] - ovector[2]);
+	// assuming longest page number is 4 digits
+	char *last_page_str = malloc(sizeof(char) * 4);
+	if (!last_page_str) {
+		fprintf(stderr, "Failed to alloc last page string\n");
+		status = 1;
+		goto clean_up;
 	}
 
+	for (regex_input_t input = {.s = chunk.res, .len = strlen(chunk.res), .pos = 0};
+	     regex_match_next(&pagination_list_, &input, &match) == REGEX_MATCH_OK; regex_match_cleanup(&match)) {
+		strncpy(last_page_str, match.captures[1], match.capture_lens[1]);
+	}
+	memory_free(&chunk);
+
 	long last_page = strtol(last_page_str, NULL, 10);
+	free(last_page_str);
 	printf("%ld\n", last_page);
 
 	char post_data[64];
@@ -127,27 +129,27 @@ signed main(void) {
 		goto clean_up;
 	}
 
-	for (const char *cur_pos = chunk.res;
-	     (rc = pcre_exec(chapter_list_.re, chapter_list_.re_extra, cur_pos, res_length, 0, 0, ovector, 30)) >= 0;
-	     cur_pos += ovector[1], res_length -= ovector[1]) {
+	for (regex_input_t input = {.s = chunk.res, .len = strlen(chunk.res), .pos = 0};
+	     regex_match_next(&chapter_list_, &input, &match) == REGEX_MATCH_OK; regex_match_cleanup(&match)) {
 
-		if (chapter_size >= 64) {
-			fprintf(stderr, "Exceeded novel array capacity\n");
-			break;
-		}
-
-		char *host             = strndup(cur_pos + ovector[2], ovector[3] - ovector[2]);
-		char *novel_name       = strndup(cur_pos + ovector[4], ovector[5] - ovector[4]);
-		char *chapter_name_url = strndup(cur_pos + ovector[6], ovector[7] - ovector[6]);
+		char *host             = strndup(match.captures[1], match.capture_lens[1]);
+		char *novel_name       = strndup(match.captures[2], match.capture_lens[2]);
+		char *chapter_name_url = strndup(match.captures[3], match.capture_lens[3]);
 
 		char *url;
 		asprintf(&url, "https://%s/%s/%s", host, novel_name, chapter_name_url);
+		free(host);
+		free(novel_name);
+		free(chapter_name_url);
 
-		char *chapter_name = html_decode(strndup(cur_pos + ovector[8], ovector[9] - ovector[8]));
+		char *__chapter_name = strndup(match.captures[4], match.capture_lens[4]);
+		char *chapter_name   = html_decode(__chapter_name);
+		free(__chapter_name);
 
 		chapters[chapter_size].url    = url;
 		chapters[chapter_size++].name = chapter_name;
 	}
+	memory_free(&chunk);
 
 	// printf("Captured %zu chapters\n", chapter_size);
 	// for (size_t i = 0; i < chapter_size; ++i) {
@@ -161,34 +163,57 @@ signed main(void) {
 		goto clean_up;
 	}
 
-	res_length = strlen(chunk.res);
-
 	char content[8192];
 	size_t content_size = 0;
 
-	for (const char *cur_pos = chunk.res;
-	     (rc = pcre_exec(novel_content_.re, novel_content_.re_extra, cur_pos, res_length, 0, 0, ovector, 30)) >= 0;
-	     cur_pos += ovector[1], res_length -= ovector[1]) {
-
-		switch (*(cur_pos + ovector[0] + 1)) {
+	for (regex_input_t input = {.s = chunk.res, .len = strlen(chunk.res), .pos = 0};
+	     regex_match_next(&novel_content_, &input, &match) == REGEX_MATCH_OK; regex_match_cleanup(&match)) {
+		switch (*(match.captures[0] + 1)) {
 		case 'd':
 			content[content_size++] = '\n';
 			content[content_size++] = '\n';
 			break;
 		case 'p':
-			strncpy(content + content_size, strndup(cur_pos + ovector[2], ovector[3] - ovector[2]), ovector[3] - ovector[2]);
-			content_size += ovector[3] - ovector[2];
+			strncpy(content + content_size, match.captures[1], match.capture_lens[1]);
+			content_size += match.capture_lens[1];
 			break;
 		}
 
 		printf("%ld\n", content_size);
 	}
 	content[content_size] = '\0';
+	memory_free(&chunk);
 
 	printf("%s\n", content);
 
 clean_up:
-	memory_free(&chunk);
+	for (size_t i = 0; i < novel_size; ++i) {
+		if (novels[i].name) {
+			free(novels[i].name);
+			novels[i].name = NULL;
+		}
+		if (novels[i].url) {
+			free(novels[i].url);
+			novels[i].url = NULL;
+		}
+	}
+
+	if (id) {
+		free(id);
+		id = NULL;
+	}
+
+	for (size_t i = 0; i < chapter_size; ++i) {
+		if (chapters[i].name) {
+			free(chapters[i].name);
+			chapters[i].name = NULL;
+		}
+		if (chapters[i].url) {
+			free(chapters[i].url);
+			chapters[i].url = NULL;
+		}
+	}
+
 	curl_easy_cleanup(curl);
 	curl_global_cleanup();
 
