@@ -1,6 +1,8 @@
 #ifndef HTML_UTILS_H
 #define HTML_UTILS_H
 
+#include <string.h>
+
 struct html_entity {
 	const char *entity;
 	unsigned long codepoint;

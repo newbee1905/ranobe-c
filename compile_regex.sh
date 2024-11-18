@@ -11,18 +11,18 @@ mkdir -p "$COMPILED_REGEX_DIR"
 
 # Check if compile_regex utility exists, build it if necessary
 if ! [ -x "$COMPILE_REGEX_BIN" ]; then
-  if [ -f "$COMPILE_REGEX_SRC" ]; then
-    echo "Building compile_regex utility..."
-    gcc -o "$COMPILE_REGEX_BIN" "$COMPILE_REGEX_SRC" -lpcre -flto -Ofast
-    if [ $? -ne 0 ]; then
-      echo "Error: Failed to build compile_regex utility."
-      exit 1
-    fi
-    echo "compile_regex utility built successfully."
-  else
-    echo "Error: compile_regex.c source file not found."
-    exit 1
-  fi
+	if [ -f "$COMPILE_REGEX_SRC" ]; then
+		echo "Building compile_regex utility..."
+		gcc -o "$COMPILE_REGEX_BIN" "$COMPILE_REGEX_SRC" -lpcre -flto -Ofast
+		if [ $? -ne 0 ]; then
+			echo "Error: Failed to build compile_regex utility."
+			exit 1
+		fi
+		echo "compile_regex utility built successfully."
+	else
+		echo "Error: compile_regex.c source file not found."
+		exit 1
+	fi
 fi
 
 find "$REGEX_DIR" -type f -name "*.regex" | while read -r regex_file; do
@@ -32,14 +32,14 @@ find "$REGEX_DIR" -type f -name "*.regex" | while read -r regex_file; do
 
 	compiled_file="$output_dir/$(basename "$regex_file" .regex).pcre"
 
-  echo "Compiling regex: $regex_file -> $compiled_file"
-  "$COMPILE_REGEX_BIN" "$regex_file" "$compiled_file"
+	echo "Compiling regex: $regex_file -> $compiled_file"
+	"$COMPILE_REGEX_BIN" "$regex_file" "$compiled_file"
 
-  # Check if compilation was successful
-  if [ $? -ne 0 ]; then
-    echo "Error: Failed to compile $regex_file"
-    exit 1
-  fi
+	# Check if compilation was successful
+	if [ $? -ne 0 ]; then
+		echo "Error: Failed to compile $regex_file"
+		exit 1
+	fi
 done
 
 echo "All regex patterns compiled successfully into $COMPILED_REGEX_DIR"

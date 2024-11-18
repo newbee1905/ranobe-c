@@ -4,6 +4,7 @@
 #include <pcre.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define OVECSIZE          32
 #define REGEX_MATCH_OK    0

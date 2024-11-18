@@ -4,6 +4,7 @@
 #define CURL_GET_OK 0
 
 #include "arena.h"
+#include <string.h>
 
 const char *user_agents[] = {
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
