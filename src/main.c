@@ -45,7 +45,7 @@ signed main(void) {
 	char arena_buffer[KiB(64)];
 	char arena_curl_buffer[MiB(2)];
 
-	arena_t *arena = arena_create(KiB(64), arena_buffer);
+	arena_t *arena      = arena_create(KiB(64), arena_buffer);
 	arena_t *arena_curl = arena_create(MiB(2), arena_curl_buffer);
 
 	srand(time(NULL));

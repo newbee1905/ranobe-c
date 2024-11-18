@@ -30,7 +30,7 @@ struct regex_match {
 	int *capture_lens;
 	char **captures;
 	size_t num_captures;
-	arena_t* arena;
+	arena_t *arena;
 };
 typedef struct regex_match regex_match_t;
 
@@ -81,7 +81,7 @@ typedef struct regex_match regex_match_t;
 		}                                                                                                                  \
 	}
 
-static inline void regex_match_init(arena_t* arena, regex_match_t *match);
+static inline void regex_match_init(arena_t *arena, regex_match_t *match);
 static inline void regex_match_cleanup(regex_match_t *match);
 static inline int regex_extract_captures(regex_match_t *match, const char *input);
 static inline int regex_match_next(regex_compiled_t *regex, regex_input_t *input, regex_match_t *match);
@@ -94,7 +94,7 @@ static inline void regex_match_init(arena_t *arena, regex_match_t *match) {
 	match->capture_lens = NULL;
 	match->captures     = NULL;
 	match->num_captures = 0;
-	match->arena = arena;
+	match->arena        = arena;
 }
 
 static inline void regex_match_cleanup(regex_match_t *match) {
