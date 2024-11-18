@@ -1,3 +1,4 @@
 #!/bin/sh
-echo "pre-commit hook run"
+
+echo "pre-commit hook run: Formating"
 ./format.sh
