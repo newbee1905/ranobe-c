@@ -74,8 +74,7 @@ signed main(void) {
 	res_length = strlen(chunk.res);
 
 	for (const char *cur_pos = chunk.res;
-	     (rc = pcre_exec(novel_list_.re, novel_list_.re_extra, cur_pos, res_length, 0, 0, ovector, 30)
-	     ) >= 0;
+	     (rc = pcre_exec(novel_list_.re, novel_list_.re_extra, cur_pos, res_length, 0, 0, ovector, 30)) >= 0;
 	     cur_pos += ovector[1], res_length -= ovector[1]) {
 		if (novel_size >= 64) {
 			fprintf(stderr, "Exceeded novel array capacity\n");
@@ -111,9 +110,7 @@ signed main(void) {
 
 	char *last_page_str;
 	for (const char *cur_pos = chunk.res;
-	     (rc = pcre_exec(
-					pagination_list_.re, pagination_list_.re_extra, cur_pos, res_length, 0, 0, ovector, 30
-				)) >= 0;
+	     (rc = pcre_exec(pagination_list_.re, pagination_list_.re_extra, cur_pos, res_length, 0, 0, ovector, 30)) >= 0;
 	     cur_pos += ovector[1], res_length -= ovector[1]) {
 
 		last_page_str = strndup(cur_pos + ovector[2], ovector[3] - ovector[2]);
@@ -131,9 +128,7 @@ signed main(void) {
 	}
 
 	for (const char *cur_pos = chunk.res;
-	     (rc = pcre_exec(
-					chapter_list_.re, chapter_list_.re_extra, cur_pos, res_length, 0, 0, ovector, 30
-				)) >= 0;
+	     (rc = pcre_exec(chapter_list_.re, chapter_list_.re_extra, cur_pos, res_length, 0, 0, ovector, 30)) >= 0;
 	     cur_pos += ovector[1], res_length -= ovector[1]) {
 
 		if (chapter_size >= 64) {
@@ -172,9 +167,7 @@ signed main(void) {
 	size_t content_size = 0;
 
 	for (const char *cur_pos = chunk.res;
-	     (rc = pcre_exec(
-					novel_content_.re, novel_content_.re_extra, cur_pos, res_length, 0, 0, ovector, 30
-				)) >= 0;
+	     (rc = pcre_exec(novel_content_.re, novel_content_.re_extra, cur_pos, res_length, 0, 0, ovector, 30)) >= 0;
 	     cur_pos += ovector[1], res_length -= ovector[1]) {
 
 		switch (*(cur_pos + ovector[0] + 1)) {
@@ -183,10 +176,7 @@ signed main(void) {
 			content[content_size++] = '\n';
 			break;
 		case 'p':
-			strncpy(
-				content + content_size, strndup(cur_pos + ovector[2], ovector[3] - ovector[2]),
-				ovector[3] - ovector[2]
-			);
+			strncpy(content + content_size, strndup(cur_pos + ovector[2], ovector[3] - ovector[2]), ovector[3] - ovector[2]);
 			content_size += ovector[3] - ovector[2];
 			break;
 		}

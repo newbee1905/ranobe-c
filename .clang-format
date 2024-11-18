@@ -3,7 +3,7 @@ BasedOnStyle: LLVM
 IndentWidth: 2
 TabWidth: 2
 UseTab: AlignWithSpaces
-ColumnLimit: 100
+ColumnLimit: 120
 AlignArrayOfStructures: Right
 AlignConsecutiveAssignments: Consecutive
 AlignConsecutiveMacros: AcrossEmptyLines

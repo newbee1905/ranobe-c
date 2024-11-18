@@ -2,8 +2,8 @@
 #define CURL_UTILS_H
 
 #define CURL_GET_OK 0
-#define DEFAULT_USERAGENT                                                                          \
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "              \
+#define DEFAULT_USERAGENT                                                                                              \
+	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "                                  \
 	"Chrome/114.0.0.0 Safari/537.36"
 #define DEFAULT_REFERER "https://google.com"
 
@@ -17,17 +17,16 @@ const char *user_agents[] = {
 
 const char *referers[] = {"https://google.com", "https://bing.com", "https://duckduckgo.com"};
 
-#define SET_RANDOM_USER_AGENT(curl)                                                                \
-	do {                                                                                             \
-		const char *random_user_agent =                                                                \
-			user_agents[rand() % (sizeof(user_agents) / sizeof(user_agents[0]))];                        \
-		curl_easy_setopt(curl, CURLOPT_USERAGENT, random_user_agent);                                  \
+#define SET_RANDOM_USER_AGENT(curl)                                                                                    \
+	do {                                                                                                                 \
+		const char *random_user_agent = user_agents[rand() % (sizeof(user_agents) / sizeof(user_agents[0]))];              \
+		curl_easy_setopt(curl, CURLOPT_USERAGENT, random_user_agent);                                                      \
 	} while (0)
 
-#define SET_RANDOM_REFERER(curl)                                                                   \
-	do {                                                                                             \
-		const char *random_referer = referers[rand() % (sizeof(referers) / sizeof(referers[0]))];      \
-		curl_easy_setopt(curl, CURLOPT_AUTOREFERER, random_referer);                                   \
+#define SET_RANDOM_REFERER(curl)                                                                                       \
+	do {                                                                                                                 \
+		const char *random_referer = referers[rand() % (sizeof(referers) / sizeof(referers[0]))];                          \
+		curl_easy_setopt(curl, CURLOPT_AUTOREFERER, random_referer);                                                       \
 	} while (0)
 
 struct memory {
