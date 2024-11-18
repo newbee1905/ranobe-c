@@ -2,10 +2,16 @@
 
 ## Dependencies
 
+### Using build.sh
+
 - gcc or clang
 - Any POSIX Shell
 - curl
 - pcre
+
+### Using nix
+
+- nix
 
 ## Dev Dependencies
 
@@ -21,3 +27,4 @@
 - [ ] Track progress
 - [x] Properly malloc string
 - [x] Adding arena for better memory management
+- [x] Adding flake.nix
