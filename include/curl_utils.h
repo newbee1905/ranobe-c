@@ -2,10 +2,8 @@
 #define CURL_UTILS_H
 
 #define CURL_GET_OK 0
-#define DEFAULT_USERAGENT                                                                                              \
-	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "                                  \
-	"Chrome/114.0.0.0 Safari/537.36"
-#define DEFAULT_REFERER "https://google.com"
+
+#include "arena.h"
 
 const char *user_agents[] = {
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -32,10 +30,11 @@ const char *referers[] = {"https://google.com", "https://bing.com", "https://duc
 struct memory {
 	char *res;
 	size_t size;
+	arena_t *arena;
 };
 typedef struct memory memory_t;
 
-static inline void memory_init(memory_t *mem);
+static inline void memory_init(arena_t *arena, memory_t *mem);
 static inline void memory_free(memory_t *mem);
 static inline void memory_move(memory_t *dst, memory_t *src);
 
@@ -45,17 +44,16 @@ int curl_post(CURL *curl, const char *url, const char *post_data, memory_t *out)
 
 #ifdef CURL_UTILS_IMPEMENTATION
 
-static inline void memory_init(memory_t *mem) {
-	mem->res  = NULL;
-	mem->size = 0;
+static inline void memory_init(arena_t *arena, memory_t *mem) {
+	mem->res   = NULL;
+	mem->size  = 0;
+	mem->arena = arena;
 }
 
 static inline void memory_free(memory_t *mem) {
-	if (mem->res) {
-		free(mem->res);
-		mem->res = NULL;
-	}
+	mem->res  = NULL;
 	mem->size = 0;
+	arena_clear(mem->arena);
 }
 
 static inline void memory_move(memory_t *dst, memory_t *src) {
@@ -69,10 +67,27 @@ static inline size_t __write_cb(char *data, size_t size, size_t nmemb, void *cli
 	size_t realsize = size * nmemb;
 	memory_t *mem   = (memory_t *)clientp;
 
-	char *ptr = realloc(mem->res, mem->size + realsize + 1);
+	// TODO: do a proper realloc for arena
+	// This only expland the mem-res if the mem->res is the latest allocated
+	// memory within the arena
+	if (mem->res && (mem->res + mem->size == mem->arena->memory + mem->arena->size)) {
+		if (mem->arena->size + realsize <= mem->arena->capacity) {
+			mem->arena->size += realsize;
+			memcpy(mem->res + mem->size, data, realsize);
+			mem->size += realsize;
+			mem->res[mem->size] = '\0';
+			return realsize;
+		}
+	}
+
+	char *ptr = arena_alloc(mem->arena, mem->size + realsize + 1);
 	if (!ptr) {
 		fprintf(stderr, "Failed to allocate memory for curl write callback\n");
 		return 0;
+	}
+
+	if (mem->res) {
+		memcpy(ptr, mem->res, mem->size);
 	}
 
 	mem->res = ptr;
@@ -88,7 +103,7 @@ int curl_get(CURL *curl, const char *url, memory_t *out) {
 		return -1;
 	}
 
-	memory_init(out);
+	memory_init(out->arena, out);
 
 	curl_easy_setopt(curl, CURLOPT_URL, url);
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, __write_cb);
@@ -124,7 +139,7 @@ int curl_post(CURL *curl, const char *url, const char *post_data, memory_t *out)
 		return -1;
 	}
 
-	memory_init(out);
+	memory_init(out->arena, out);
 
 	curl_easy_setopt(curl, CURLOPT_URL, url);
 	curl_easy_setopt(curl, CURLOPT_POST, 1L);              // Enable POST

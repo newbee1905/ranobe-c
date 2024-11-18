@@ -30,6 +30,7 @@ struct regex_match {
 	int *capture_lens;
 	char **captures;
 	size_t num_captures;
+	arena_t* arena;
 };
 typedef struct regex_match regex_match_t;
 
@@ -80,33 +81,23 @@ typedef struct regex_match regex_match_t;
 		}                                                                                                                  \
 	}
 
-static inline void regex_match_init(regex_match_t *match);
+static inline void regex_match_init(arena_t* arena, regex_match_t *match);
 static inline void regex_match_cleanup(regex_match_t *match);
 static inline int regex_extract_captures(regex_match_t *match, const char *input);
 static inline int regex_match_next(regex_compiled_t *regex, regex_input_t *input, regex_match_t *match);
 
 #ifdef REGEX_IMPLEMENTATION
 
-static inline void regex_match_init(regex_match_t *match) {
+static inline void regex_match_init(arena_t *arena, regex_match_t *match) {
 	match->rc           = 0;
 	match->match_start  = NULL;
 	match->capture_lens = NULL;
 	match->captures     = NULL;
 	match->num_captures = 0;
+	match->arena = arena;
 }
 
 static inline void regex_match_cleanup(regex_match_t *match) {
-	if (match->captures) {
-		for (size_t i = 0; i < match->num_captures; ++i) {
-			free(match->captures[i]);
-		}
-		free(match->captures);
-		match->captures = NULL;
-	}
-	if (match->capture_lens) {
-		free(match->capture_lens);
-		match->capture_lens = NULL;
-	}
 	match->num_captures = 0;
 }
 
@@ -116,8 +107,8 @@ static inline int regex_extract_captures(regex_match_t *match, const char *input
 	}
 
 	match->num_captures = match->rc;
-	match->capture_lens = malloc(sizeof(int) * match->num_captures);
-	match->captures     = malloc(sizeof(char *) * match->num_captures);
+	match->capture_lens = arena_alloc(match->arena, sizeof(int) * match->num_captures);
+	match->captures     = arena_alloc(match->arena, sizeof(char *) * match->num_captures);
 
 	if (!match->capture_lens || !match->captures) {
 		regex_match_cleanup(match);
@@ -129,7 +120,7 @@ static inline int regex_extract_captures(regex_match_t *match, const char *input
 		int end                = match->ovector[2 * i + 1];
 		match->capture_lens[i] = end - start;
 
-		match->captures[i] = malloc(match->capture_lens[i] + 1);
+		match->captures[i] = arena_alloc(match->arena, match->capture_lens[i] + 1);
 		if (!match->captures[i]) {
 			regex_match_cleanup(match);
 			return REGEX_MATCH_ERROR;

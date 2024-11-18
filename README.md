@@ -19,6 +19,5 @@
 - [ ] Read Lightnovel from terminal
 - [ ] Small GUI with imgui for reading lightnovel
 - [ ] Track progress
-- [ ] Properly malloc string
-- [ ] Adding arena for better memory management
-- [ ] implement small vector for adding content to render
+- [x] Properly malloc string
+- [x] Adding arena for better memory management

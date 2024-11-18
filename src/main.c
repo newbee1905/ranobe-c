@@ -1,12 +1,17 @@
 #include <ctype.h>
 #include <curl/curl.h>
 #include <stdio.h>
-#include <stdlib.h> /* for realloc */
-#include <string.h> /* for memcpy */
+#include <stdlib.h>
+#include <string.h>
 #include <time.h>
 #include <wchar.h>
 
 #include <pcre.h>
+
+#define ARENA_IMPLEMENTATION
+#include "arena.h"
+#define ARENA_STRING_IMPLEMENTATION
+#include "arena/string.h"
 
 #define CURL_UTILS_IMPEMENTATION
 #include "curl_utils.h"
@@ -37,20 +42,26 @@ DEFINE_REGEX(chapter_list_, "compiled_regex/animedaily/chapter_list.pcre");
 DEFINE_REGEX(novel_content_, "compiled_regex/animedaily/novel_content.pcre");
 
 signed main(void) {
+	char arena_buffer[KiB(64)];
+	char arena_curl_buffer[MiB(2)];
+
+	arena_t *arena = arena_create(KiB(64), arena_buffer);
+	arena_t *arena_curl = arena_create(MiB(2), arena_curl_buffer);
+
 	srand(time(NULL));
 
 	int status = 0;
 
 	CURL *curl;
 	CURLcode res;
-	memory_t chunk = {0};
+	memory_t chunk = {.arena = arena_curl};
 	long res_code;
 	size_t res_length;
 
-	novel_info_t novels[64];
-	novel_info_t chapters[64];
-	size_t novel_size   = 0;
-	size_t chapter_size = 0;
+	novel_info_t *novels     = (novel_info_t *)arena_alloc(arena, sizeof(novel_info_t) * 64);
+	chapter_info_t *chapters = (chapter_info_t *)arena_alloc(arena, sizeof(chapter_info_t) * 64);
+	size_t novel_size        = 0;
+	size_t chapter_size      = 0;
 
 	res = curl_global_init(CURL_GLOBAL_DEFAULT);
 	if (res != CURLE_OK) {
@@ -63,28 +74,30 @@ signed main(void) {
 		fprintf(stderr, "curl_easy_init() failed");
 	}
 
+	regex_match_t match;
+	regex_match_init(arena, &match);
+
 	if (curl_get(curl, "https://animedaily.net/front", &chunk) != CURL_GET_OK) {
 		fprintf(stderr, "Request failed\n");
 		status = 1;
 		goto clean_up;
 	}
 
-	regex_match_t match;
-	regex_match_init(&match);
-
 	for (regex_input_t input = {.s = chunk.res, .len = strlen(chunk.res), .pos = 0};
 	     regex_match_next(&novel_list_, &input, &match) == REGEX_MATCH_OK; regex_match_cleanup(&match)) {
 
-		novels[novel_size].url    = strndup(match.captures[1], match.capture_lens[1]);
-		novels[novel_size++].name = strndup(match.captures[2], match.capture_lens[2]);
+		// novels[novel_size].url    = arena_strndup(arena, match.captures[1], match.capture_lens[1]);
+		// novels[novel_size++].name = arena_strndup(arena, match.captures[2], match.capture_lens[2]);
+		novels[novel_size].url    = match.captures[1];
+		novels[novel_size++].name = match.captures[2];
 	}
 	memory_free(&chunk);
 
-	// printf("Captured %zu novels\n", novel_size);
-	// for (size_t i = 0; i < novel_size; ++i) {
-	// 	printf("Name: %s\n", novels[i].name);
-	// 	printf("URL: %s\n", novels[i].url);
-	// }
+	printf("Captured %zu novels\n", novel_size);
+	for (size_t i = 0; i < novel_size; ++i) {
+		printf("Name: %s\n", novels[i].name);
+		printf("URL: %s\n", novels[i].url);
+	}
 
 	if (curl_get(curl, novels[0].url, &chunk) != CURL_GET_OK) {
 		fprintf(stderr, "Request failed\n");
@@ -92,19 +105,20 @@ signed main(void) {
 		goto clean_up;
 	}
 
-	printf("%s\n", novels[0].url);
+	// printf("%s\n", novels[0].url);
 
 	char *id;
 
 	for (regex_input_t input = {.s = chunk.res, .len = strlen(chunk.res), .pos = 0};
 	     regex_match_next(&novel_id_, &input, &match) == REGEX_MATCH_OK; regex_match_cleanup(&match)) {
-		id = strndup(match.captures[1], match.capture_lens[1]);
+		id = match.captures[1];
 	}
 
-	printf("%s\n", id);
+	// printf("%s\n", id);
 
+	ARENA_SAVE_SIZE(arena);
 	// assuming longest page number is 4 digits
-	char *last_page_str = malloc(sizeof(char) * 4);
+	char *last_page_str = arena_alloc(arena, sizeof(char) * 4);
 	if (!last_page_str) {
 		fprintf(stderr, "Failed to alloc last page string\n");
 		status = 1;
@@ -118,8 +132,8 @@ signed main(void) {
 	memory_free(&chunk);
 
 	long last_page = strtol(last_page_str, NULL, 10);
-	free(last_page_str);
-	printf("%ld\n", last_page);
+	// printf("%ld\n", last_page);
+	ARENA_RESET_SIZE(arena);
 
 	char post_data[64];
 	sprintf(post_data, "action=tw_ajax&type=pagination&id=%s&page=%ld", id, 1l);
@@ -132,19 +146,25 @@ signed main(void) {
 	for (regex_input_t input = {.s = chunk.res, .len = strlen(chunk.res), .pos = 0};
 	     regex_match_next(&chapter_list_, &input, &match) == REGEX_MATCH_OK; regex_match_cleanup(&match)) {
 
-		char *host             = strndup(match.captures[1], match.capture_lens[1]);
-		char *novel_name       = strndup(match.captures[2], match.capture_lens[2]);
-		char *chapter_name_url = strndup(match.captures[3], match.capture_lens[3]);
+		// `https://` is 8 + 2 `/`
+		size_t len = 10 + match.capture_lens[1] + match.capture_lens[2] + match.capture_lens[3] + 1;
+		char *url  = arena_alloc(arena, len);
+		// Allocate memory for output (worst case: input length * 4 for UTF-8)
+		char *chapter_name = arena_alloc(arena, match.capture_lens[4] * 4 + 1);
 
-		char *url;
-		asprintf(&url, "https://%s/%s/%s", host, novel_name, chapter_name_url);
-		free(host);
-		free(novel_name);
-		free(chapter_name_url);
+		ARENA_SAVE_SIZE(arena);
+		char *host             = arena_strndup(arena, match.captures[1], match.capture_lens[1]);
+		char *novel_name       = arena_strndup(arena, match.captures[2], match.capture_lens[2]);
+		char *chapter_name_url = arena_strndup(arena, match.captures[3], match.capture_lens[3]);
 
-		char *__chapter_name = strndup(match.captures[4], match.capture_lens[4]);
-		char *chapter_name   = html_decode(__chapter_name);
-		free(__chapter_name);
+		sprintf(url, "https://%s/%s/%s", host, novel_name, chapter_name_url);
+
+		char *__chapter_name = arena_strndup(arena, match.captures[4], match.capture_lens[4]);
+		html_decode(__chapter_name, chapter_name);
+		ARENA_RESET_SIZE(arena);
+
+		size_t actual_chapter_name_len = strlen(chapter_name);
+		arena->size -= match.capture_lens[4] * 4 - actual_chapter_name_len;
 
 		chapters[chapter_size].url    = url;
 		chapters[chapter_size++].name = chapter_name;
@@ -163,7 +183,7 @@ signed main(void) {
 		goto clean_up;
 	}
 
-	char content[8192];
+	char *content       = arena_alloc(arena, 8192);
 	size_t content_size = 0;
 
 	for (regex_input_t input = {.s = chunk.res, .len = strlen(chunk.res), .pos = 0};
@@ -179,7 +199,7 @@ signed main(void) {
 			break;
 		}
 
-		printf("%ld\n", content_size);
+		// printf("%ld\n", content_size);
 	}
 	content[content_size] = '\0';
 	memory_free(&chunk);
@@ -187,33 +207,10 @@ signed main(void) {
 	printf("%s\n", content);
 
 clean_up:
-	for (size_t i = 0; i < novel_size; ++i) {
-		if (novels[i].name) {
-			free(novels[i].name);
-			novels[i].name = NULL;
-		}
-		if (novels[i].url) {
-			free(novels[i].url);
-			novels[i].url = NULL;
-		}
-	}
-
-	if (id) {
-		free(id);
-		id = NULL;
-	}
-
-	for (size_t i = 0; i < chapter_size; ++i) {
-		if (chapters[i].name) {
-			free(chapters[i].name);
-			chapters[i].name = NULL;
-		}
-		if (chapters[i].url) {
-			free(chapters[i].url);
-			chapters[i].url = NULL;
-		}
-	}
-
+	printf("Used %lu of arena with capacity %lu\n", arena->size, arena->capacity);
+	printf("Used %lu of arena_curl with capacity %lu\n", arena_curl->size, arena_curl->capacity);
+	arena_destroy(arena);
+	arena_destroy(arena_curl);
 	curl_easy_cleanup(curl);
 	curl_global_cleanup();
 

@@ -34,7 +34,7 @@ static inline unsigned long hex_to_int(const char *hex, size_t len);
 static inline unsigned long dec_to_int(const char *dec);
 static inline size_t unicode_to_utf8(unsigned long codepoint, char *buffer);
 static inline int is_unicode_escape(const char *str);
-char *html_decode(const char *input);
+int html_decode(const char *input, char *output);
 
 #ifdef HTML_UTILS_IMPEMENTATION
 
@@ -90,13 +90,11 @@ static inline int is_unicode_escape(const char *str) {
 	return (str[0] == '\\' && (str[1] == 'u' || str[1] == 'U'));
 }
 
-char *html_decode(const char *input) {
-	if (!input) {
-		return NULL;
+int html_decode(const char *input, char *output) {
+	if (!input || !output) {
+		return 0;
 	}
 
-	// Allocate memory for output (worst case: input length * 4 for UTF-8)
-	char *output         = malloc(strlen(input) * 4 + 1);
 	char *write_ptr      = output;
 	const char *read_ptr = input;
 
@@ -167,7 +165,7 @@ char *html_decode(const char *input) {
 	}
 
 	*write_ptr = '\0';
-	return output;
+	return 1;
 }
 
 #endif // HTML_UTILS_IMPEMENTATION
